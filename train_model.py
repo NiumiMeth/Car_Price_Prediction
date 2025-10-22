@@ -1,74 +1,59 @@
 """
-Train the Enhanced Car Price Prediction Model
-Run this script to train the model with 87.4% accuracy
+Train the Car Price Prediction Model - Simple Version
 """
+
 import pandas as pd
 import numpy as np
 import joblib
 from pathlib import Path
 from sklearn.preprocessing import RobustScaler
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from xgboost import XGBRegressor
 import warnings
 warnings.filterwarnings('ignore')
 
-def create_enhanced_features(df):
-    """Create enhanced features for better accuracy"""
-    
+def create_features(df):
+    """Create features for prediction"""
     df_enhanced = df.copy()
     
-    # Power-based features
+    # Basic features
     df_enhanced['power_squared'] = df_enhanced['power_kw'] ** 2
     df_enhanced['power_log'] = np.log1p(df_enhanced['power_kw'])
-    df_enhanced['power_sqrt'] = np.sqrt(df_enhanced['power_kw'])
-    
-    # Mileage-based features
     df_enhanced['mileage_log'] = np.log1p(df_enhanced['mileage_in_km'])
-    df_enhanced['mileage_sqrt'] = np.sqrt(df_enhanced['mileage_in_km'])
-    
-    # Age-based features
     df_enhanced['age_squared'] = df_enhanced['vehicle_manufacturing_age'] ** 2
-    df_enhanced['age_log'] = np.log1p(df_enhanced['vehicle_manufacturing_age'])
-    
-    # Fuel efficiency
     df_enhanced['fuel_efficiency'] = 1 / (df_enhanced['fuel_consumption_g_km'] + 1)
-    
-    # EV range features
-    df_enhanced['ev_range_log'] = np.log1p(df_enhanced['ev_range_km'])
-    df_enhanced['ev_range_sqrt'] = np.sqrt(df_enhanced['ev_range_km'])
     
     # Interaction features
     df_enhanced['power_age_interaction'] = df_enhanced['power_kw'] * df_enhanced['vehicle_manufacturing_age']
     df_enhanced['mileage_age_interaction'] = df_enhanced['mileage_in_km'] * df_enhanced['vehicle_manufacturing_age']
     df_enhanced['power_mileage_interaction'] = df_enhanced['power_kw'] * df_enhanced['mileage_in_km']
     
-    # Ratio features
-    df_enhanced['power_per_age'] = df_enhanced['power_kw'] / (df_enhanced['vehicle_manufacturing_age'] + 1)
-    df_enhanced['mileage_per_age'] = df_enhanced['mileage_in_km'] / (df_enhanced['vehicle_manufacturing_age'] + 1)
-    df_enhanced['ev_range_per_power'] = df_enhanced['ev_range_km'] / (df_enhanced['power_kw'] + 1)
-    
     return df_enhanced
 
 def train_model():
-    """Train the enhanced car price prediction model"""
+    """Train the car price prediction model"""
     
-    print("🚗 Training Enhanced Car Price Prediction Model")
+    print("🚗 Training Car Price Prediction Model")
     print("=" * 50)
     
     # Create models directory
-    artifacts_dir = Path("models")
-    artifacts_dir.mkdir(exist_ok=True)
+    models_dir = Path("models")
+    models_dir.mkdir(exist_ok=True)
     
     # Load data
     print("📊 Loading data...")
-    train_df = pd.read_csv("data/processed/train_final.csv")
-    test_df = pd.read_csv("data/processed/test_final.csv")
+    try:
+        train_df = pd.read_csv("data/processed/train_final.csv")
+        test_df = pd.read_csv("data/processed/test_final.csv")
+    except FileNotFoundError as e:
+        print(f"❌ Error: {e}")
+        print("Please ensure the processed data files exist in data/processed/")
+        return None
     
-    # Apply enhanced feature engineering
-    print("🔧 Creating enhanced features...")
-    train_enhanced = create_enhanced_features(train_df)
-    test_enhanced = create_enhanced_features(test_df)
+    # Apply feature engineering
+    print("🔧 Creating features...")
+    train_enhanced = create_features(train_df)
+    test_enhanced = create_features(test_df)
     
     # Prepare features and target
     target_col = "price_in_euro"
@@ -90,7 +75,7 @@ def train_model():
     print(f"📈 Training data: {X_train.shape}, Test data: {X_test.shape}")
     print(f"🔢 Features: {len(numeric_cols)}")
     
-    # Train XGBoost with optimized parameters
+    # Train XGBoost
     print("🤖 Training XGBoost model...")
     xgb_model = XGBRegressor(
         n_estimators=1000,
@@ -113,88 +98,51 @@ def train_model():
         verbose=False
     )
     
-    # Train Random Forest for ensemble
-    print("🌲 Training Random Forest model...")
-    rf_model = RandomForestRegressor(
-        n_estimators=500,
-        max_depth=20,
-        min_samples_split=3,
-        min_samples_leaf=1,
-        max_features='sqrt',
-        random_state=42,
-        n_jobs=-1
-    )
-    rf_model.fit(X_train, y_train)
-    
     # Make predictions
     xgb_pred = xgb_model.predict(X_test)
-    rf_pred = rf_model.predict(X_test)
     
-    # Calculate individual model metrics
-    xgb_r2 = r2_score(y_test, xgb_pred)
-    xgb_mae = mean_absolute_error(y_test, xgb_pred)
-    rf_r2 = r2_score(y_test, rf_pred)
-    rf_mae = mean_absolute_error(y_test, rf_pred)
-    
-    print(f"📊 XGBoost - R²: {xgb_r2:.4f}, MAE: €{xgb_mae:,.0f}")
-    print(f"📊 Random Forest - R²: {rf_r2:.4f}, MAE: €{rf_mae:,.0f}")
-    
-    # Create ensemble (weighted average)
-    ensemble_pred = 0.7 * xgb_pred + 0.3 * rf_pred
-    
-    # Calculate ensemble metrics
-    ensemble_r2 = r2_score(y_test, ensemble_pred)
-    ensemble_mae = mean_absolute_error(y_test, ensemble_pred)
-    ensemble_rmse = np.sqrt(mean_squared_error(y_test, ensemble_pred))
+    # Calculate metrics
+    r2 = r2_score(y_test, xgb_pred)
+    mae = mean_absolute_error(y_test, xgb_pred)
+    rmse = np.sqrt(mean_squared_error(y_test, xgb_pred))
     
     # Calculate accuracy percentage
-    accuracy = (1 - abs(ensemble_mae / y_test.mean())) * 100
+    accuracy = (1 - abs(mae / y_test.mean())) * 100
     
-    print(f"\n🎯 ENHANCED ENSEMBLE RESULTS:")
-    print(f"📈 R² Score: {ensemble_r2:.4f}")
-    print(f"💰 MAE: €{ensemble_mae:,.0f}")
-    print(f"📊 RMSE: €{ensemble_rmse:,.0f}")
+    print(f"\n🎯 MODEL RESULTS:")
+    print(f"📈 R² Score: {r2:.4f}")
+    print(f"💰 MAE: €{mae:,.0f}")
+    print(f"📊 RMSE: €{rmse:,.0f}")
     print(f"🎯 Accuracy: {accuracy:.1f}%")
     
-    # Save models using compatible formats
-    print("\n💾 Saving models...")
+    # Save model
+    print("\n💾 Saving model...")
     
     # Save XGBoost model in native format
-    xgb_model.save_model(str(artifacts_dir / "xgb_model.json"))
-    
-    # Save Random Forest using joblib
-    joblib.dump(rf_model, artifacts_dir / "rf_model.joblib")
+    xgb_model.save_model(str(models_dir / "xgb_model.json"))
     
     # Save feature information
-    joblib.dump(numeric_cols, artifacts_dir / "feature_order.joblib")
+    joblib.dump(numeric_cols, models_dir / "feature_order.joblib")
     
     # Save scaler
     scaler = RobustScaler()
     scaler.fit(X_train)
-    joblib.dump(scaler, artifacts_dir / "scaler.joblib")
+    joblib.dump(scaler, models_dir / "scaler.joblib")
     
     # Save model metrics
     metrics = {
-        'r2_score': ensemble_r2,
-        'mae': ensemble_mae,
-        'rmse': ensemble_rmse,
-        'accuracy': accuracy,
-        'xgb_r2': xgb_r2,
-        'xgb_mae': xgb_mae,
-        'rf_r2': rf_r2,
-        'rf_mae': rf_mae
+        'r2_score': r2,
+        'mae': mae,
+        'rmse': rmse,
+        'accuracy': accuracy
     }
-    joblib.dump(metrics, artifacts_dir / "model_metrics.joblib")
-    
-    # Save ensemble weights
-    weights = {'xgb': 0.7, 'rf': 0.3}
-    joblib.dump(weights, artifacts_dir / "ensemble_weights.joblib")
+    joblib.dump(metrics, models_dir / "model_metrics.joblib")
     
     print("✅ Model training completed successfully!")
-    print(f"📁 Models saved to: {artifacts_dir}")
-    print("🚀 Ready to run the app with: python app.py")
+    print(f"📁 Models saved to: {models_dir}")
+    print("🚀 Ready to run the app with: streamlit run app.py")
     
-    return xgb_model, rf_model, numeric_cols, scaler, metrics
+    return xgb_model, numeric_cols, scaler, metrics
 
 if __name__ == "__main__":
     train_model()

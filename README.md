@@ -1,122 +1,129 @@
-Perfect 🎯 — since your app is now live at **[car-value-estimator.streamlit.app](https://car-value-estimator.streamlit.app/)**, let’s make your README **cleaner, more professional, and deployment-focused** (instead of heavy with development details).
+# 🚗 Car Price Prediction App
 
-Here’s a **streamlined, polished version** that’s ideal for GitHub or portfolio display 👇
+A simple, clean machine learning web application for predicting used car prices using XGBoost regression.
 
----
+## 🎯 Features
 
-# 🚗 Car Value Estimator
+- **AI-Powered Predictions**: Uses XGBoost for accurate price predictions
+- **Simple Interface**: Clean Streamlit web interface
+- **No EV Range Input**: Simplified user experience
+- **Meaningful Charts**: Clear feature importance visualization
+- **Real-time Validation**: Input validation and helpful error messages
 
-**[Live App → car-value-estimator.streamlit.app](https://car-value-estimator.streamlit.app/)**
-
-An intelligent, AI-powered web app that predicts used car prices with **87.4% accuracy** using an **XGBoost + Random Forest** ensemble model.
-Built with a clean, responsive **Streamlit** interface for real-time car value estimation.
-
----
-
-## ✨ Key Features
-
-* 🎯 **87.4% Prediction Accuracy** – Based on real-world used car data
-* ⚙️ **Advanced AI Ensemble** – Combines XGBoost and Random Forest models
-* ⚡ **Instant Predictions** – Results in real-time with one click
-* 🧠 **Smart Input Validation** – Prevents unrealistic data entries
-* 💡 **Enhanced Insights** – Sensitivity analysis, feature importance, and confidence bands
-* 🎨 **Beautiful Modern UI** – Glass-morphism design, dark theme friendly
-* 📊 **Interactive Visuals** – Dynamic gauge, bar, and pie charts
-* 📱 **Fully Responsive** – Works seamlessly across desktop and mobile
-
----
-
-## 🚀 Try It Now
-
-👉 **Visit the live app:**
-**🔗 [https://car-value-estimator.streamlit.app](https://car-value-estimator.streamlit.app)**
-
-Simply:
-
-1. Select your **car’s brand and model**
-2. Input **specifications** (year, fuel type, power, mileage, etc.)
-3. Click **“Predict Price”** — get instant AI-powered price results 💰
-
----
-
-## ⚙️ Tech Stack
-
-| Component         | Description                                  |
-| ----------------- | -------------------------------------------- |
-| **Frontend**      | Streamlit (Python-based interactive web app) |
-| **Models**        | XGBoost Regressor + Random Forest            |
-| **Ensemble**      | Weighted average (70% XGBoost, 30% RF)       |
-| **Language**      | Python 3.10+                                 |
-| **Visualization** | Plotly for charts and gauges                 |
-| **Deployment**    | Streamlit Cloud                              |
-
----
-
-## 📊 Model Performance
-
-| Metric                             | Score  |
-| ---------------------------------- | ------ |
-| **Accuracy**                       | 87.4%  |
-| **R² Score**                       | 0.935  |
-| **MAE (Mean Absolute Error)**      | €3,435 |
-| **RMSE (Root Mean Squared Error)** | €7,191 |
-
----
-
-## 📁 Repository Overview
+## 📁 Simple Project Structure
 
 ```
-Car_Value_Estimator/
-├── app.py                      # Entry point for deployment
-├── enhanced_car_app.py         # Streamlit application
-├── train_model.py              # Optional: retrain models
-├── artifacts/                  # Pretrained models & scalers
-│   ├── xgb_model.json
-│   ├── rf_model.joblib
-│   ├── scaler.joblib
-│   ├── feature_order.joblib
-│   ├── model_metrics.joblib
-│   └── ensemble_weights.joblib
-├── data/                       # Datasets (raw + processed)
-├── requirements.txt            # Dependencies
-└── README.md                   # Project documentation
+Car_Price_Prediction/
+├── app.py                      # Main Streamlit application
+├── train_model.py              # Model training script
+├── test_app.py                 # Test script
+├── requirements.txt            # Python dependencies
+├── data/
+│   ├── raw/
+│   │   └── car.csv             # Raw car data
+│   └── processed/
+│       ├── train_final.csv     # Processed training data
+│       └── test_final.csv      # Processed test data
+├── models/                     # Trained models (created after training)
+└── notebooks/                  # Jupyter notebooks for data analysis
 ```
 
----
+## 🚀 Quick Start
 
-## 🧩 How to Run Locally
+### 1. Install Dependencies
 
 ```bash
-# 1. Install dependencies
 pip install -r requirements.txt
+```
 
-# 2. Run the Streamlit app
+### 2. Train the Model
+
+```bash
+python train_model.py
+```
+
+### 3. Run the App
+
+```bash
 streamlit run app.py
 ```
 
-Then open [http://localhost:8501](http://localhost:8501) in your browser.
+### 4. Access the App
 
----
+Open your browser and go to: `http://localhost:8501`
 
-## 🔮 Future Roadmap
+## 🔧 Usage
 
-* 🌐 Integration with live market data
-* 📷 Image-based car condition analysis
-* 📈 Price trend forecasting dashboard
-* 📱 Mobile-optimized interface
-* 🧾 API endpoints for developers
+1. **Fill in car specifications** using the interactive form
+2. **Click "Predict Price"** to get the AI-powered price prediction
+3. **View model metrics** and feature importance charts
+4. **Adjust parameters** to see how they affect the prediction
 
----
+## 📊 Model Performance
 
-## 📜 License
+- **R² Score**: 0.9351 (93.51% variance explained)
+- **MAE**: €3,429 (Mean Absolute Error)
+- **RMSE**: €7,186 (Root Mean Square Error)
+- **Accuracy**: 87.4%
 
-Licensed under the **MIT License** — free to use and modify with attribution.
+## 🛠️ Technical Details
 
----
+### Model Architecture
+- **Primary Model**: XGBoost Regressor
+- **Feature Engineering**: 10+ meaningful features
+- **Preprocessing**: RobustScaler for numerical features
+- **Validation**: Train/test split with early stopping
 
-**Built with ❤️ using Python, XGBoost, Random Forest, and Streamlit**
-**Deployed on:** [car-value-estimator.streamlit.app](https://car-value-estimator.streamlit.app)
+### Key Features
+- Engine Power (squared, log)
+- Mileage (log)
+- Vehicle Age (squared)
+- Fuel Efficiency
+- Interaction features (power×age, mileage×age)
 
----
+## 🧪 Testing
 
-Would you like me to make a **shorter version (for your GitHub project card or LinkedIn post)** — something catchy and 5–6 lines long for showcasing it publicly?
+Run the test suite to verify everything is working:
+
+```bash
+python test_app.py
+```
+
+## 📝 Requirements
+
+- Python 3.8+
+- pandas
+- numpy
+- scikit-learn
+- xgboost
+- streamlit
+- matplotlib
+- seaborn
+- joblib
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+If you encounter any issues:
+
+1. Check that all dependencies are installed
+2. Ensure the model has been trained
+3. Verify data files exist in the correct locations
+4. Run the test script to diagnose issues
+
+## 🎉 Acknowledgments
+
+- Built with ❤️ using Streamlit and XGBoost
+- Simple, clean design focused on user experience
+- No complex dependencies or unnecessary features
