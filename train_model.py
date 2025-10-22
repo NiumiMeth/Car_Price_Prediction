@@ -56,8 +56,8 @@ def train_model():
     print("🚗 Training Enhanced Car Price Prediction Model")
     print("=" * 50)
     
-    # Create artifacts directory
-    artifacts_dir = Path("artifacts")
+    # Create models directory
+    artifacts_dir = Path("models")
     artifacts_dir.mkdir(exist_ok=True)
     
     # Load data

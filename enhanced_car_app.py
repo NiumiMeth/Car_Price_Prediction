@@ -109,7 +109,7 @@ st.markdown("""
 def load_enhanced_model():
     """Load the enhanced model without pickle issues"""
     try:
-        artifacts_dir = Path("artifacts")
+        artifacts_dir = Path("models")
 
         # Load XGBoost model from native format
         xgb_model = XGBRegressor()
@@ -133,7 +133,7 @@ def load_enhanced_model():
 # Bootstrap: ensure artifacts exist (auto-train on first run)
 # ---------------------------------------------------------
 def ensure_artifacts():
-    artifacts_dir = Path("artifacts")
+    artifacts_dir = Path("models")
     required = [
         artifacts_dir / "xgb_model.json",
         artifacts_dir / "rf_model.joblib",
