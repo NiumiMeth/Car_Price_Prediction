@@ -18,7 +18,7 @@ MODELS_DIR = SRC_DIR / "models"
 UTILS_DIR = SRC_DIR / "utils"
 
 # Data files
-RAW_DATA_FILE = "gcar_data.csv"
+RAW_DATA_FILE = "car.csv"
 TRAIN_FILE = "train_final.csv"
 TEST_FILE = "test_final.csv"
 
