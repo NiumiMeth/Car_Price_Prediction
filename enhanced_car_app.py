@@ -145,6 +145,67 @@ def ensure_artifacts():
 
     try:
         artifacts_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure processed data exists; if not, build from raw
+        processed_dir = Path("data/processed")
+        raw_csv = Path("data/raw/car.csv")
+        train_csv = processed_dir / "train_final.csv"
+        test_csv = processed_dir / "test_final.csv"
+
+        if not (train_csv.exists() and test_csv.exists()):
+            if not raw_csv.exists():
+                raise FileNotFoundError("data/raw/car.csv not found. Please include your dataset.")
+
+            processed_dir.mkdir(parents=True, exist_ok=True)
+            import pandas as _pd
+            df = _pd.read_csv(raw_csv)
+
+            # Minimal schema checks and renames
+            rename_map = {
+                'price': 'price_in_euro',
+                'price_eur': 'price_in_euro',
+                'power_kw': 'power_kw',
+                'mileage': 'mileage_in_km',
+                'mileage_km': 'mileage_in_km',
+                'fuel_consumption': 'fuel_consumption_g_km',
+                'fuel_consumption_g_km': 'fuel_consumption_g_km',
+                'ev_range': 'ev_range_km',
+                'ev_range_km': 'ev_range_km',
+            }
+            for k, v in list(rename_map.items()):
+                if k in df.columns and v not in df.columns:
+                    df.rename(columns={k: v}, inplace=True)
+
+            # Required columns
+            req = ['brand','model','year','color','transmission_type','fuel_type',
+                   'power_kw','mileage_in_km','fuel_consumption_g_km','ev_range_km','price_in_euro']
+            missing = [c for c in req if c not in df.columns]
+            if missing:
+                raise ValueError(f"Raw data missing required columns: {missing}")
+
+            # Basic cleaning
+            df = df.dropna(subset=req)
+            df = df.copy()
+            # Clamp/clean numerics
+            for col in ['power_kw','mileage_in_km','fuel_consumption_g_km','ev_range_km','year']:
+                df[col] = _pd.to_numeric(df[col], errors='coerce')
+            df = df.dropna(subset=['power_kw','mileage_in_km','year','price_in_euro'])
+            df['fuel_consumption_g_km'] = df['fuel_consumption_g_km'].fillna(0)
+            df['ev_range_km'] = df['ev_range_km'].fillna(0)
+
+            # Derive minimal features expected by training
+            data_collection_year = 2024
+            df['vehicle_manufacturing_age'] = data_collection_year - df['year'].astype(int)
+            df['vehicle_registration_age'] = df['vehicle_manufacturing_age']
+            df['mileage_per_year'] = df['mileage_in_km'] / (df['vehicle_registration_age'].replace(0,1))
+            df['reg_month_sin'] = np.sin(2 * np.pi * 6 / 12)
+            df['reg_month_cos'] = np.cos(2 * np.pi * 6 / 12)
+
+            # Simple train/test split (80/20, stratify by brand where possible)
+            from sklearn.model_selection import train_test_split as _tts
+            train_df, test_df = _tts(df, test_size=0.2, random_state=42, stratify=df['brand'] if 'brand' in df.columns else None)
+            train_df.to_csv(train_csv, index=False)
+            test_df.to_csv(test_csv, index=False)
+
         import importlib
         with st.spinner("⚙️ First run detected: training model (one-time)..."):
             train_mod = importlib.import_module("train_model")
