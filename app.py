@@ -661,7 +661,7 @@ def main():
     st.markdown("""
     <div style="text-align:center;color:#888;padding:1.2rem 0;">
         <p>🚗 <strong>Enhanced Car Price Prediction App</strong> | Powered by Advanced AI</p>
-        <p>Built with ❤️ using XGBoost, Random Forest, Plotly, and Streamlit</p>
+        <p>Built using XGBoost, Random Forest, Plotly, and Streamlit</p>
         <p>✅ No Pickle Issues | 🎯 {accuracy:.1f}% Accuracy | ⚡ Fast & Reliable</p>
     </div>
     """.format(accuracy=metrics['accuracy']), unsafe_allow_html=True)
