@@ -15,6 +15,9 @@ import pandas as pd
 import numpy as np
 import joblib
 from pathlib import Path
+import os
+import urllib.request
+import ssl
 import plotly.express as px
 import plotly.graph_objects as go
 from xgboost import XGBRegressor
@@ -106,7 +109,7 @@ st.markdown("""
 def load_enhanced_model():
     """Load the enhanced model without pickle issues"""
     try:
-        artifacts_dir = Path("artifacts")
+        artifacts_dir = Path("models")
 
         # Load XGBoost model from native format
         xgb_model = XGBRegressor()
@@ -125,6 +128,108 @@ def load_enhanced_model():
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")
         return None, None, None, None, None, None
+
+# ---------------------------------------------------------
+# Bootstrap: ensure artifacts exist (auto-train on first run)
+# ---------------------------------------------------------
+def ensure_artifacts():
+    artifacts_dir = Path("models")
+    required = [
+        artifacts_dir / "xgb_model.json",
+        artifacts_dir / "rf_model.joblib",
+        artifacts_dir / "scaler.joblib",
+        artifacts_dir / "feature_order.joblib",
+        artifacts_dir / "model_metrics.joblib",
+        artifacts_dir / "ensemble_weights.joblib",
+    ]
+
+    if all(p.exists() for p in required):
+        return True
+
+    try:
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure processed data exists; if not, build from raw
+        processed_dir = Path("data/processed")
+        raw_csv = Path("data/raw/car.csv")
+        train_csv = processed_dir / "train_final.csv"
+        test_csv = processed_dir / "test_final.csv"
+
+        if not (train_csv.exists() and test_csv.exists()):
+            if not raw_csv.exists():
+                # Try to download from env var if provided
+                dataset_url = os.environ.get("DATASET_URL") or os.environ.get("DATASET_RAW_CSV")
+                if dataset_url:
+                    raw_csv.parent.mkdir(parents=True, exist_ok=True)
+                    try:
+                        ctx = ssl.create_default_context()
+                        with urllib.request.urlopen(dataset_url, context=ctx) as r, open(raw_csv, 'wb') as f:
+                            f.write(r.read())
+                    except Exception as _e:
+                        raise FileNotFoundError(f"Failed to download dataset from DATASET_URL: {_e}")
+                else:
+                    raise FileNotFoundError("data/raw/car.csv not found. Provide DATASET_URL env var or include the dataset.")
+
+            processed_dir.mkdir(parents=True, exist_ok=True)
+            import pandas as _pd
+            df = _pd.read_csv(raw_csv)
+
+            # Minimal schema checks and renames
+            rename_map = {
+                'price': 'price_in_euro',
+                'price_eur': 'price_in_euro',
+                'power_kw': 'power_kw',
+                'mileage': 'mileage_in_km',
+                'mileage_km': 'mileage_in_km',
+                'fuel_consumption': 'fuel_consumption_g_km',
+                'fuel_consumption_g_km': 'fuel_consumption_g_km',
+                'ev_range': 'ev_range_km',
+                'ev_range_km': 'ev_range_km',
+            }
+            for k, v in list(rename_map.items()):
+                if k in df.columns and v not in df.columns:
+                    df.rename(columns={k: v}, inplace=True)
+
+            # Required columns
+            req = ['brand','model','year','color','transmission_type','fuel_type',
+                   'power_kw','mileage_in_km','fuel_consumption_g_km','ev_range_km','price_in_euro']
+            missing = [c for c in req if c not in df.columns]
+            if missing:
+                raise ValueError(f"Raw data missing required columns: {missing}")
+
+            # Basic cleaning
+            df = df.dropna(subset=req)
+            df = df.copy()
+            # Clamp/clean numerics
+            for col in ['power_kw','mileage_in_km','fuel_consumption_g_km','ev_range_km','year']:
+                df[col] = _pd.to_numeric(df[col], errors='coerce')
+            df = df.dropna(subset=['power_kw','mileage_in_km','year','price_in_euro'])
+            df['fuel_consumption_g_km'] = df['fuel_consumption_g_km'].fillna(0)
+            df['ev_range_km'] = df['ev_range_km'].fillna(0)
+
+            # Derive minimal features expected by training
+            data_collection_year = 2024
+            df['vehicle_manufacturing_age'] = data_collection_year - df['year'].astype(int)
+            df['vehicle_registration_age'] = df['vehicle_manufacturing_age']
+            df['mileage_per_year'] = df['mileage_in_km'] / (df['vehicle_registration_age'].replace(0,1))
+            df['reg_month_sin'] = np.sin(2 * np.pi * 6 / 12)
+            df['reg_month_cos'] = np.cos(2 * np.pi * 6 / 12)
+
+            # Simple train/test split (80/20, stratify by brand where possible)
+            from sklearn.model_selection import train_test_split as _tts
+            train_df, test_df = _tts(df, test_size=0.2, random_state=42, stratify=df['brand'] if 'brand' in df.columns else None)
+            train_df.to_csv(train_csv, index=False)
+            test_df.to_csv(test_csv, index=False)
+
+        import importlib
+        with st.spinner("⚙️ First run detected: training model (one-time)..."):
+            train_mod = importlib.import_module("train_model")
+            # Train and save artifacts
+            train_mod.train_model()
+        return True
+    except Exception as e:
+        st.error(f"❌ Failed to prepare model artifacts automatically: {e}")
+        st.info("You can also prebuild locally with: `python train_model.py`")
+        return False
 
 @st.cache_data
 def get_data_info():
@@ -271,6 +376,10 @@ def local_sensitivity(model, x_row, scaler, deltas=None):
 def main():
     st.markdown('<h1 class="main-header">🚗 Enhanced Car Price Predictor</h1>', unsafe_allow_html=True)
     st.markdown('<p style="text-align:center;font-size:1.1rem;color:#aaa;margin-bottom:2.2rem;">Predict used car prices with 87.4% accuracy using advanced machine learning</p>', unsafe_allow_html=True)
+
+    # Ensure artifacts exist (auto-trains on first deploy if missing)
+    if not ensure_artifacts():
+        st.stop()
 
     # Load model artifacts
     xgb_model, rf_model, feature_order, scaler, metrics, weights = load_enhanced_model()
