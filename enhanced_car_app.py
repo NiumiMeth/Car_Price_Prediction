@@ -126,6 +126,36 @@ def load_enhanced_model():
         st.error(f"❌ Error loading model: {e}")
         return None, None, None, None, None, None
 
+# ---------------------------------------------------------
+# Bootstrap: ensure artifacts exist (auto-train on first run)
+# ---------------------------------------------------------
+def ensure_artifacts():
+    artifacts_dir = Path("artifacts")
+    required = [
+        artifacts_dir / "xgb_model.json",
+        artifacts_dir / "rf_model.joblib",
+        artifacts_dir / "scaler.joblib",
+        artifacts_dir / "feature_order.joblib",
+        artifacts_dir / "model_metrics.joblib",
+        artifacts_dir / "ensemble_weights.joblib",
+    ]
+
+    if all(p.exists() for p in required):
+        return True
+
+    try:
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        import importlib
+        with st.spinner("⚙️ First run detected: training model (one-time)..."):
+            train_mod = importlib.import_module("train_model")
+            # Train and save artifacts
+            train_mod.train_model()
+        return True
+    except Exception as e:
+        st.error(f"❌ Failed to prepare model artifacts automatically: {e}")
+        st.info("You can also prebuild locally with: `python train_model.py`")
+        return False
+
 @st.cache_data
 def get_data_info():
     """Get unique values from the raw data for dropdowns"""
@@ -271,6 +301,10 @@ def local_sensitivity(model, x_row, scaler, deltas=None):
 def main():
     st.markdown('<h1 class="main-header">🚗 Enhanced Car Price Predictor</h1>', unsafe_allow_html=True)
     st.markdown('<p style="text-align:center;font-size:1.1rem;color:#aaa;margin-bottom:2.2rem;">Predict used car prices with 87.4% accuracy using advanced machine learning</p>', unsafe_allow_html=True)
+
+    # Ensure artifacts exist (auto-trains on first deploy if missing)
+    if not ensure_artifacts():
+        st.stop()
 
     # Load model artifacts
     xgb_model, rf_model, feature_order, scaler, metrics, weights = load_enhanced_model()
