@@ -15,6 +15,9 @@ import pandas as pd
 import numpy as np
 import joblib
 from pathlib import Path
+import os
+import urllib.request
+import ssl
 import plotly.express as px
 import plotly.graph_objects as go
 from xgboost import XGBRegressor
@@ -153,7 +156,18 @@ def ensure_artifacts():
 
         if not (train_csv.exists() and test_csv.exists()):
             if not raw_csv.exists():
-                raise FileNotFoundError("data/raw/car.csv not found. Please include your dataset.")
+                # Try to download from env var if provided
+                dataset_url = os.environ.get("DATASET_URL") or os.environ.get("DATASET_RAW_CSV")
+                if dataset_url:
+                    raw_csv.parent.mkdir(parents=True, exist_ok=True)
+                    try:
+                        ctx = ssl.create_default_context()
+                        with urllib.request.urlopen(dataset_url, context=ctx) as r, open(raw_csv, 'wb') as f:
+                            f.write(r.read())
+                    except Exception as _e:
+                        raise FileNotFoundError(f"Failed to download dataset from DATASET_URL: {_e}")
+                else:
+                    raise FileNotFoundError("data/raw/car.csv not found. Provide DATASET_URL env var or include the dataset.")
 
             processed_dir.mkdir(parents=True, exist_ok=True)
             import pandas as _pd
