@@ -21,9 +21,9 @@ warnings.filterwarnings('ignore')
 MODELS_DIR = Path("models")
 REQUIRED_FILES = [
     MODELS_DIR / "xgb_model.json",
-    MODELS_DIR / "feature_order.joblib",
-    MODELS_DIR / "scaler.joblib",
-    MODELS_DIR / "model_metrics.joblib",
+    MODELS_DIR / "feature_order.joblib",
+    MODELS_DIR / "scaler.joblib",
+    MODELS_DIR / "model_metrics.joblib", 
 ]
 
 # Mock data for graceful fallback
